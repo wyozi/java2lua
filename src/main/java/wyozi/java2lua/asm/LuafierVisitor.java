@@ -1,17 +1,15 @@
 package wyozi.java2lua.asm;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Strings;
 import org.objectweb.asm.*;
 import wyozi.java2lua.core.LuaFunction;
+import wyozi.java2lua.core.UnpackParameters;
 import wyozi.java2lua.util.AsmUtil;
 import wyozi.java2lua.util.LuaOutputter;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -96,6 +94,8 @@ public class LuafierVisitor extends ClassVisitor {
                 if ("java/lang/StringBuilder".equals(type)) {
                     pushStack("{}");
                 }
+            } else if (opcode == Opcodes.ANEWARRAY) {
+                pushStack("{}");
             }
         }
 
@@ -106,11 +106,6 @@ public class LuafierVisitor extends ClassVisitor {
 
             labelz.add(label);
             return labelz.size()-1;
-        }
-
-        @Override
-        public void visitLabel(Label label) {
-            outputter.writeStatement("::l" + getLabelNumber(label) + "::");
         }
 
         @Override
@@ -130,7 +125,18 @@ public class LuafierVisitor extends ClassVisitor {
                         getPopStack() + ", " + getPopStack() + ")";
 
                 pushStack(inlined);
+            } else if (opcode == Opcodes.AASTORE) {
+                // arr idx val
+                String val = getPopStack();
+                String idx = getPopStack();
+                String arr = getPopStack();
+                outputter.writeStatement(arr + "[1 + " + idx + "] = " + val);
             }
+        }
+
+        @Override
+        public void visitLabel(Label label) {
+            outputter.writeStatement("::l" + getLabelNumber(label) + "::");
         }
 
         @Override
@@ -206,10 +212,14 @@ public class LuafierVisitor extends ClassVisitor {
         }
 
         private String getMethodCall(Method m) {
+            boolean unpackParams = (m.getAnnotation(UnpackParameters.class) != null);
             String luaFuncName = (m.getAnnotation(LuaFunction.class) != null ? m.getAnnotation(LuaFunction.class).value() : m.getName());
 
             String[] params = new String[m.getParameterTypes().length];
-            for (int i = 0;i < params.length; i++) params[i] = getPopStack();
+            for (int i = 0;i < params.length; i++) {
+                params[i] = getPopStack();
+                if (unpackParams) params[i] = String.format("table.unpack(%s)", params[i]);
+            }
 
             String methodCall = String.format("%s(%s)", luaFuncName, Joiner.on(", ").join(params));
             if (m.getReturnType() == void.class) {
@@ -223,6 +233,12 @@ public class LuafierVisitor extends ClassVisitor {
         public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
             if (opcode == Opcodes.INVOKESTATIC) {
                 Method m = findMethod(owner, name, desc);
+
+                // If auto-boxing, skip
+                if ("valueOf".equals(name) && m.getParameterTypes()[0] != String.class) {
+                    return;
+                }
+
                 outputter.writeStatement(getMethodCall(m));
             }
             else if (opcode == Opcodes.INVOKESPECIAL) {

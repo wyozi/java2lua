@@ -13,7 +13,7 @@ import java.io.IOException;
  */
 public class Main {
     public static void main(String[] args) throws IOException {
-        File cls = new File("target/classes/wyozi/java2lua/Test.class");
+        File cls = new File("target/classes/wyozi/java2lua/test/Test.class");
         ClassReader reader = new ClassReader(new FileInputStream(cls));
         LuafierVisitor luafierVisitor = new LuafierVisitor();
         reader.accept(luafierVisitor, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
