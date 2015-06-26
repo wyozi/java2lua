@@ -1,6 +1,7 @@
 package wyozi.java2lua;
 
 import wyozi.java2lua.api.Globals;
+import wyozi.java2lua.api.LuaMath;
 import wyozi.java2lua.core.Script;
 
 /**
@@ -8,8 +9,9 @@ import wyozi.java2lua.core.Script;
  */
 public class Test extends Script {
     public void run() {
-        for (int i = 0;i < 4; i++) {
-            Globals.print("Hello world!");
+        Globals.print("Pi equals " + LuaMath.PI);
+        for (double x = 0; x < 10; x += LuaMath.PI) {
+            Globals.print("x: " + x + "; sin: " + LuaMath.sin(x) + "; cos: " + LuaMath.cos(x));
         }
     }
 }

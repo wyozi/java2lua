@@ -15,6 +15,9 @@ public class LuaOutputter {
         sb.append(stmt);
         sb.append('\n');
     }
+    public void writeStatement(String stmt, Object... args) {
+        writeStatement(String.format(stmt, args));
+    }
 
     public String getLua() {
         return sb.toString();
